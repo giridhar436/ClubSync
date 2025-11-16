@@ -16,38 +16,46 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) {
+      try {
+        // Use .maybeSingle() to gracefully handle cases where a profile might not exist yet (0 rows),
+        // returning null without an error. It will still error if multiple rows are found,
+        // which helps identify data integrity issues.
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          throw error;
+        }
+
+        setProfile(data); // data will be the profile object or null
+      } catch (error) {
+        // This catches both Supabase-specific errors and network errors like 'Failed to fetch'.
         console.error('Error fetching user profile:', error.message);
         setProfile(null);
-      } else {
-        setProfile(data);
       }
     };
 
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+    setLoading(true);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
+      setSession(session);
       setUser(currentUser);
       await fetchUserProfile(currentUser);
       setLoading(false);
-    };
-
-    initializeAuth();
+    });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
+      (_event, session) => {
         const currentUser = session?.user ?? null;
+        setSession(session);
         setUser(currentUser);
-        await fetchUserProfile(currentUser);
-        setLoading(false); 
+        // Use setTimeout to defer the async profile fetch, preventing deadlocks
+        setTimeout(() => {
+          fetchUserProfile(currentUser);
+        }, 0);
       }
     );
 

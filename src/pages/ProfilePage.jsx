@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User as UserIcon, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, LayoutGrid, ShieldCheck, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,13 +9,13 @@ const ProfileHeader = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-30 h-[70px] bg-[#260046]">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 h-full flex justify-between items-center">
-        <button onClick={() => navigate(-1)} className="text-white p-2 hover:bg-white/10 rounded-full transition-colors" aria-label="Go back">
+        <button onClick={() => navigate('/dashboard')} className="text-white p-2 hover:bg-white/10 rounded-full transition-colors" aria-label="Go to Dashboard">
           <ArrowLeft size={28} />
         </button>
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg border-2 border-white flex items-center justify-center bg-white/20">
+          <button onClick={() => navigate('/dashboard')} className="w-10 h-10 rounded-lg border-2 border-transparent hover:border-white flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all" aria-label="Go to Dashboard">
             <LayoutGrid size={20} className="text-white" />
-          </div>
+          </button>
           <div className="w-10 h-10 rounded-full border-2 border-white flex items-center justify-center bg-white/20">
             <UserIcon size={20} className="text-white" />
           </div>
@@ -40,8 +40,12 @@ const GlassCard = ({ title, children, className }) => (
 );
 
 const ProfilePage = () => {
-  const { user } = useAuth();
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+
+  const userName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email;
+  const userRole = profile?.role || 'user';
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-pink-300 via-orange-200 to-pink-200 relative overflow-x-hidden">
@@ -63,29 +67,42 @@ const ProfilePage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               {/* Left Column */}
               <div className="space-y-8">
-                <GlassCard title="Profile" className="min-h-[190px]" />
+                <GlassCard title="Profile">
+                  <div className="flex flex-col items-center text-center -mt-4">
+                    <div className="w-24 h-24 rounded-full bg-white/30 border-2 border-white flex items-center justify-center mb-4">
+                      <UserIcon size={48} className="text-[#260046]" />
+                    </div>
+                    <h4 className="font-inter text-xl font-semibold text-[#260046]">{userName}</h4>
+                    <p className="font-inter text-base text-[#260046]/80 mb-6">{userEmail}</p>
+                    
+                    <div className="flex items-center gap-4 bg-white/30 rounded-xl p-3 border border-white/40">
+                      <div className="p-2 bg-white/50 rounded-lg">
+                        {userRole === 'admin' ? <ShieldCheck className="text-green-700" /> : <UserIcon className="text-[#260046]" />}
+                      </div>
+                      <div>
+                        <p className="font-inter text-xs text-[#260046]/70 text-left">ROLE</p>
+                        <p className="font-inter font-bold text-md text-[#260046] capitalize">{userRole}</p>
+                      </div>
+                    </div>
+
+                    {userRole === 'admin' && (
+                      <motion.button
+                        onClick={() => navigate('/admin-dashboard')}
+                        className="mt-6 w-full bg-[#260046] hover:bg-opacity-90 text-white font-inter font-semibold py-3 rounded-xl shadow-lg transition-all"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Go to Admin Dashboard
+                      </motion.button>
+                    )}
+                  </div>
+                </GlassCard>
                 <GlassCard title="Registered Clubs" className="min-h-[190px]" />
               </div>
 
               {/* Right Column */}
               <div className="relative">
                 <GlassCard title="Events Participated" className="min-h-[412px]" />
-                <motion.img
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                  src="https://www.pngmart.com/files/15/White-Vase-PNG-Transparent-Image.png" 
-                  alt="Vase with branches" 
-                  className="absolute -bottom-16 right-0 lg:-right-12 w-auto h-[300px] sm:h-[400px] lg:h-[500px] object-contain pointer-events-none hidden md:block"
-                />
-                <motion.img
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                  src="https://www.pngmart.com/files/15/White-Vase-PNG-Transparent-Image.png" 
-                  alt="Vase with branches" 
-                  className="mt-8 mx-auto w-auto h-[300px] object-contain pointer-events-none md:hidden"
-                />
               </div>
             </div>
         </div>

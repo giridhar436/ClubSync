@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, CalendarDays, LayoutGrid, User, ArrowLeft } from 'lucide-react';
-import { clubs, eventsByClub } from '../data/dashboardData';
+import { Menu, X, CalendarDays, LayoutGrid, User, ArrowLeft, Bell, Loader2 } from 'lucide-react';
+import { clubs } from '../data/dashboardData';
+import { supabase } from '../supabaseClient';
 
 const DashboardHeader = ({ onMenuToggle, isMobileMenuOpen }) => {
   const navigate = useNavigate();
@@ -74,7 +75,7 @@ const ClubsPanel = ({ selectedClub, onSelectClub, isOpen, onClose }) => {
   );
 };
 
-const EventsPanel = ({ club, events }) => (
+const EventsPanel = ({ club, events, loading }) => (
   <div className="flex-grow p-6 lg:p-8">
     <h2 className="font-playfair text-4xl font-bold text-white mb-8">EVENTS</h2>
     <AnimatePresence mode="wait">
@@ -86,39 +87,76 @@ const EventsPanel = ({ club, events }) => (
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
-        {events.map((event, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-lg"
-          >
-            <h3 className="font-playfair text-xl font-bold text-black mb-2">{event.title}</h3>
-            <p className="font-inter text-gray-700 mb-4">{event.description}</p>
-            <div className="font-inter text-sm text-gray-600 space-y-1">
-              <p><strong>Date:</strong> {event.date}</p>
-              <p><strong>Time:</strong> {event.time}</p>
-              <p><strong>Venue:</strong> {event.venue}</p>
-            </div>
-            {event.details && (
-              <ul className="list-disc list-inside mt-3 font-inter text-sm text-gray-600 space-y-1">
-                {event.details.map((detail, i) => <li key={i}>{detail}</li>)}
-              </ul>
-            )}
-          </motion.div>
-        ))}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="w-12 h-12 text-white animate-spin" />
+          </div>
+        ) : events.length > 0 ? (
+          events.map((event, index) => (
+            <motion.div
+              key={event.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-lg"
+            >
+              <h3 className="font-playfair text-xl font-bold text-black mb-2">{event.title}</h3>
+              <p className="font-inter text-gray-700 mb-4">{event.description}</p>
+              <div className="font-inter text-sm text-gray-600 space-y-1">
+                <p><strong>Date:</strong> {new Date(event.event_date).toLocaleString()}</p>
+                <p><strong>Venue:</strong> {event.venue}</p>
+              </div>
+              {event.registration_link && (
+                <div className="mt-4">
+                  <a
+                    href={event.registration_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block bg-[#260046] text-white font-inter font-semibold px-6 py-2 rounded-lg shadow-md hover:bg-opacity-90 transition-all hover:scale-105"
+                  >
+                    Register Now
+                  </a>
+                </div>
+              )}
+            </motion.div>
+          ))
+        ) : (
+          <div className="text-center text-white/70 font-inter p-8 bg-white/10 rounded-2xl">
+            No events found for this club.
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>
   </div>
 );
 
-const WelcomeView = () => (
+const WelcomeView = ({ announcements, loading }) => (
   <div className="w-full max-w-4xl mx-auto text-center pt-24 px-4">
     <h1 className="font-playfair text-5xl md:text-6xl font-bold text-white mb-4">WELCOME BACK</h1>
     <p className="font-inter text-lg text-white/80 mb-8">Here’s what’s happening in your clubs today!</p>
-    <div className="bg-white/30 backdrop-blur-md rounded-3xl p-8 min-h-[300px] shadow-xl">
-      <h3 className="font-playfair text-2xl font-bold text-black/80 text-left">Announcements</h3>
+    <div className="bg-white/30 backdrop-blur-md rounded-3xl p-8 min-h-[300px] shadow-xl text-left">
+      <h3 className="font-playfair text-2xl font-bold text-black/80 mb-4 flex items-center gap-2">
+        <Bell /> Announcements
+      </h3>
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="w-10 h-10 text-black/60 animate-spin" />
+          </div>
+        ) : announcements.length > 0 ? (
+          announcements.map(ann => (
+            <div key={ann.id} className="bg-white/50 p-4 rounded-lg">
+              <h4 className="font-inter font-bold text-black/90">{ann.title}</h4>
+              <p className="font-inter text-sm text-black/70">{ann.description}</p>
+              <p className="text-xs text-black/50 mt-2">
+                {clubs.find(c => c.id === ann.club_id)?.name || 'General'} - {new Date(ann.created_at).toLocaleDateString()}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-black/60 font-inter pt-8">No announcements yet.</p>
+        )}
+      </div>
     </div>
   </div>
 );
@@ -126,28 +164,63 @@ const WelcomeView = () => (
 const DashboardPage = () => {
   const [selectedClub, setSelectedClub] = useState('finite-loop');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [view, setView] = useState('welcome'); // 'welcome' or 'dashboard'
+  const [view, setView] = useState('welcome');
+  const [events, setEvents] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
 
-  // This effect simulates switching from welcome to dashboard after a delay
-  // In a real app, this might be a user action
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setView('dashboard');
     }, 3000);
+    
+    fetchAnnouncements();
+
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    fetchEvents(selectedClub);
+  }, [selectedClub]);
+
+  const fetchEvents = async (clubId) => {
+    setEventsLoading(true);
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('club_id', clubId)
+      .order('event_date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching events:', error);
+    } else {
+      setEvents(data);
+    }
+    setEventsLoading(false);
+  };
+
+  const fetchAnnouncements = async () => {
+    setAnnouncementsLoading(true);
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error('Error fetching announcements:', error);
+    } else {
+      setAnnouncements(data);
+    }
+    setAnnouncementsLoading(false);
+  };
+
   const selectedClubData = clubs.find(c => c.id === selectedClub);
-  const currentEvents = eventsByClub[selectedClub];
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-dash-bg-start via-dash-bg-mid to-dash-bg-end relative overflow-hidden">
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-marble opacity-50"></div>
-      <img 
-        src="https://www.pngmart.com/files/15/White-Vase-PNG-Transparent-Image.png" 
-        alt="Vase" 
-        className="absolute bottom-0 right-0 lg:right-[5%] h-1/2 lg:h-3/4 object-contain pointer-events-none z-10"
-      />
 
       <DashboardHeader 
         onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -163,7 +236,7 @@ const DashboardPage = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <WelcomeView />
+              <WelcomeView announcements={announcements} loading={announcementsLoading} />
             </motion.div>
           ) : (
             <motion.div
@@ -172,7 +245,6 @@ const DashboardPage = () => {
               animate={{ opacity: 1 }}
               className="max-w-screen-2xl mx-auto lg:flex lg:items-start lg:space-x-8 h-full"
             >
-              {/* Mobile Menu */}
               <div className="lg:hidden">
                 <ClubsPanel
                   selectedClub={selectedClub}
@@ -181,8 +253,6 @@ const DashboardPage = () => {
                   onClose={() => setIsMobileMenuOpen(false)}
                 />
               </div>
-
-              {/* Desktop Sidebar */}
               <div className="hidden lg:block">
                  <ClubsPanel
                   selectedClub={selectedClub}
@@ -190,8 +260,7 @@ const DashboardPage = () => {
                   isOpen={true}
                 />
               </div>
-              
-              <EventsPanel club={selectedClubData} events={currentEvents} />
+              <EventsPanel club={selectedClubData} events={events} loading={eventsLoading} />
             </motion.div>
           )}
         </AnimatePresence>
