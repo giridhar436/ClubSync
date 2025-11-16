@@ -88,8 +88,9 @@ Password
 ClubSync is built using modern, fast, and beginner-friendly tools:
 
 Layer	Technology
-Frontend	React.js, Vite.js, Tailwind CSS, HTML, CSS, JavaScript
-Backend	Supabase
-Design Prototype	Figma/HTML CSS
+Frontend:- React.js, Vite.js, Tailwind CSS, HTML, CSS, JavaScript
+Backend:-	Supabase
+Design Prototype:- Figma/HTML CSS
+Ai:- Dualite
 
 Since this project is part of a hackathon and a learning journey, contributions are welcome after the initial submission!
